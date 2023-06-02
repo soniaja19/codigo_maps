@@ -1,4 +1,4 @@
-import 'package:codigo_maps/pages/home_pages.dart';
+import 'package:codigo_maps/pages/permission_page.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -8,8 +8,8 @@ void main() {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: HomePage(),
+    return const MaterialApp(
+      home: PermissionPage(),
     );
   }
 }
