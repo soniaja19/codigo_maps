@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
@@ -6,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/file.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class HomePage extends StatefulWidget {
@@ -50,6 +52,20 @@ class _HomePageState extends State<HomePage> {
     ),
   };
 
+  Set<Polyline> myPolyline = {
+    const Polyline(
+      polylineId: PolylineId("ruta1"),
+      color: Colors.amber,
+      points: [
+        LatLng(-12.051527, -77.033921),
+        LatLng(-12.049428, -77.030041),
+        LatLng(-12.048880, -77.029285),
+      ],
+    ),
+  };
+
+  StreamSubscription<Position>? positionStreamSubscription;
+
   @override
   initState() {
     super.initState();
@@ -71,6 +87,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   //
+  getCurrentPosition() async {
+    positionStreamSubscription = Geolocator.getPositionStream().listen((event) {
+      print(event);
+    });
+
+    //  Position position = await Geolocator.getCurrentPosition();
+    // Geolocator.getPositionStream().listen((event) {
+    //   print(event);
+    // });
+  }
+
   Future<Uint8List> getImageMarkerBytes(String path,
       {bool frontInternet = false, double width = 100}) async {
     late Uint8List bytes;
@@ -94,6 +121,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void dispose() {
+    super.dispose();
+    positionStreamSubscription!.cancel();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: GoogleMap(
@@ -114,6 +147,7 @@ class _HomePageState extends State<HomePage> {
 
         //Para crear marcadores
         markers: myMarkers,
+        polylines: myPolyline,
         onTap: (LatLng position) async {
           Marker marker = Marker(
             markerId: MarkerId(myMarkers.length.toString()),
