@@ -41,21 +41,13 @@ class _HomePageState extends State<HomePage> {
     }
   ];
 
-  Set<Marker> myMarkers = {
-    const Marker(
-      markerId: MarkerId("mandarina0"),
-      position: LatLng(-11.964758, -76.984970),
-    ),
-    const Marker(
-      markerId: MarkerId("mandarina1"),
-      position: LatLng(-11.964958, -76.984570),
-    ),
-  };
-
+  Set<Marker> myMarkers = {};
   Set<Polyline> myPolyline = {};
   final List<LatLng> _points = [];
 
   StreamSubscription<Position>? positionStreamSubscription;
+
+  late GoogleMapController googleMapController;
 
   @override
   initState() {
@@ -90,7 +82,7 @@ class _HomePageState extends State<HomePage> {
 
     BitmapDescriptor myIcon = BitmapDescriptor.fromBytes(
       await getImageMarkerBytes(
-        "https//freesvg.org/img/car_topview.png",
+        "https://freesvg.org/img/car_topview.png",
         frontInternet: true,
       ),
     );
@@ -118,6 +110,8 @@ class _HomePageState extends State<HomePage> {
         rotation: rotation,
       );
       myMarkers.add(indicator);
+      CameraUpdate cameraUpdate = CameraUpdate.newLatLng(point);
+      googleMapController.animateCamera(cameraUpdate);
       positionTemp = event;
       setState(() {});
     });
@@ -129,7 +123,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<Uint8List> getImageMarkerBytes(String path,
-      {bool frontInternet = false, double width = 100}) async {
+      {bool frontInternet = false, int width = 100}) async {
     late Uint8List bytes;
 
 //Si la imagen es de internet
@@ -142,12 +136,17 @@ class _HomePageState extends State<HomePage> {
       bytes = byteData.buffer.asUint8List();
     }
 //con ello configuramos el tamaño de la imagen
-    final codec = await ui.instantiateImageCodec(bytes, targetWidth: 100);
+    final codec = await ui.instantiateImageCodec(bytes, targetWidth: width);
     ui.FrameInfo frame = await codec.getNextFrame();
     ByteData? myByteData =
         await frame.image.toByteData(format: ui.ImageByteFormat.png);
     Uint8List myBytes = myByteData!.buffer.asUint8List();
     return myBytes;
+  }
+
+  Future<LatLng> getCurrentPositionInicial() async {
+    Position position = await Geolocator.getCurrentPosition();
+    return LatLng(position.latitude, position.longitude);
   }
 
   @override
@@ -159,54 +158,74 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: GoogleMap(
-        initialCameraPosition: const CameraPosition(
-          target: LatLng(-11.964758, -76.984970),
-          zoom: 16,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          CameraUpdate cameraUpdate =
+              CameraUpdate.newLatLng(await getCurrentPositionInicial());
+          googleMapController.animateCamera(cameraUpdate);
+        },
+        child: const Icon(
+          Icons.location_on,
         ),
-        compassEnabled: true,
-        myLocationButtonEnabled: false,
-        myLocationEnabled: true,
-        mapType: MapType.normal,
-        onMapCreated: (GoogleMapController controller) {
-          controller.setMapStyle(json.encode(mapStyle));
-        },
-        zoomControlsEnabled: true, //para hacer zoom
-        zoomGesturesEnabled:
-            true, // con esto se puede mover pero no se puede hacer zoom
-
-        //Para crear marcadores
-        markers: myMarkers,
-        polylines: myPolyline,
-        onTap: (LatLng position) async {
-          Marker marker = Marker(
-            markerId: MarkerId(myMarkers.length.toString()),
-            position: position,
-            // icon: await BitmapDescriptor.fromAssetImage(
-            //   const ImageConfiguration(),
-            //   "assets/images/location.png", //para cambiar el ìcono del marcador
-            // ),
-            // icon: BitmapDescriptor.defaultMarkerWithHue(
-            //     BitmapDescriptor.hueOrange),//cambiar colorr
-
-            icon: BitmapDescriptor.fromBytes(
-              await getImageMarkerBytes(
-                "https://cdn-icons-png.flaticon.com/512/1673/1673219.png",
-                frontInternet: true,
-                width: 200,
-              ),
-            ),
-            rotation: 0, //para obtener la rotaciòn del marcador
-            draggable: true, //para arrastrar y mover
-            onDrag: (LatLng newPosition) //para ser arrastrado
-                {
-              print(newPosition);
-            },
-          );
-          myMarkers.add(marker);
-          setState(() {});
-        },
       ),
+      body: FutureBuilder(
+          future: getCurrentPositionInicial(),
+          builder: (BuildContext context, AsyncSnapshot snap) {
+            if (snap.hasData) {
+              return GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: snap.data,
+                  zoom: 16,
+                ),
+                compassEnabled: true,
+                myLocationEnabled: false,
+                myLocationButtonEnabled: true,
+                mapType: MapType.normal,
+                onMapCreated: (GoogleMapController controller) {
+                  googleMapController = controller;
+                  controller.setMapStyle(json.encode(mapStyle));
+                },
+                zoomControlsEnabled: true, //para hacer zoom
+                zoomGesturesEnabled:
+                    true, // con esto se puede mover pero no se puede hacer zoom
+
+                //Para crear marcadores
+                markers: myMarkers,
+                polylines: myPolyline,
+                onTap: (LatLng position) async {
+                  Marker marker = Marker(
+                    markerId: MarkerId(myMarkers.length.toString()),
+                    position: position,
+                    // icon: await BitmapDescriptor.fromAssetImage(
+                    //   const ImageConfiguration(),
+                    //   "assets/images/location.png", //para cambiar el ìcono del marcador
+                    // ),
+                    // icon: BitmapDescriptor.defaultMarkerWithHue(
+                    //     BitmapDescriptor.hueOrange),//cambiar colorr
+
+                    icon: BitmapDescriptor.fromBytes(
+                      await getImageMarkerBytes(
+                        "https://cdn-icons-png.flaticon.com/512/1673/1673219.png",
+                        frontInternet: true,
+                        width: 200,
+                      ),
+                    ),
+                    rotation: 0, //para obtener la rotaciòn del marcador
+                    draggable: true, //para arrastrar y mover
+                    onDrag: (LatLng newPosition) //para ser arrastrado
+                        {
+                      print(newPosition);
+                    },
+                  );
+                  myMarkers.add(marker);
+                  setState(() {});
+                },
+              );
+            }
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }),
     );
   }
 }
