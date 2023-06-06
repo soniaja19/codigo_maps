@@ -52,17 +52,8 @@ class _HomePageState extends State<HomePage> {
     ),
   };
 
-  Set<Polyline> myPolyline = {
-    const Polyline(
-      polylineId: PolylineId("ruta1"),
-      color: Colors.amber,
-      points: [
-        LatLng(-12.051527, -77.033921),
-        LatLng(-12.049428, -77.030041),
-        LatLng(-12.048880, -77.029285),
-      ],
-    ),
-  };
+  Set<Polyline> myPolyline = {};
+  final List<LatLng> _points = [];
 
   StreamSubscription<Position>? positionStreamSubscription;
 
@@ -70,6 +61,7 @@ class _HomePageState extends State<HomePage> {
   initState() {
     super.initState();
     getData();
+    getCurrentPosition();
   }
 
   getData() async {
@@ -88,8 +80,46 @@ class _HomePageState extends State<HomePage> {
 
   //
   getCurrentPosition() async {
+    Polyline route1 = Polyline(
+      polylineId: const PolylineId("route1"),
+      color: Colors.deepPurple,
+      width: 3,
+      points: _points,
+    );
+    myPolyline.add(route1);
+
+    BitmapDescriptor myIcon = BitmapDescriptor.fromBytes(
+      await getImageMarkerBytes(
+        "https//freesvg.org/img/car_topview.png",
+        frontInternet: true,
+      ),
+    );
+    Position? positionTemp;
+
     positionStreamSubscription = Geolocator.getPositionStream().listen((event) {
-      print(event);
+      LatLng point = LatLng(event.latitude, event.longitude);
+      _points.add(point);
+
+      double rotation = 0;
+
+      if (positionTemp != null) {
+        rotation = Geolocator.bearingBetween(
+          positionTemp!.latitude,
+          positionTemp!.longitude,
+          event.latitude,
+          event.longitude,
+        );
+      }
+
+      Marker indicator = Marker(
+        markerId: const MarkerId("IndicatorPosition"),
+        position: point,
+        icon: myIcon,
+        rotation: rotation,
+      );
+      myMarkers.add(indicator);
+      positionTemp = event;
+      setState(() {});
     });
 
     //  Position position = await Geolocator.getCurrentPosition();
@@ -135,7 +165,7 @@ class _HomePageState extends State<HomePage> {
           zoom: 16,
         ),
         compassEnabled: true,
-        myLocationButtonEnabled: true,
+        myLocationButtonEnabled: false,
         myLocationEnabled: true,
         mapType: MapType.normal,
         onMapCreated: (GoogleMapController controller) {
